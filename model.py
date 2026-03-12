@@ -12,50 +12,41 @@ dropout    = 0.1
 
 class MultiHeadAttention(nn.Module):
     """
-    Fused multi-head self-attention.
+    Multi-head self-attention using F.scaled_dot_product_attention.
 
-    Instead of 8 separate Head modules each doing (256→32) projections,
-    we use a single (256→768) linear to compute Q, K, V for all heads
-    in one matmul, then split. This is how GPT-2 is actually implemented:
-    faster to train, cleaner state dict, and maps directly to the C++
-    runtime without any export gymnastics.
+    PyTorch's SDPA is optimized (FlashAttention, etc) and handles
+    causal masking, scaling, softmax, and dropout automatically.
     """
     def __init__(self):
         super().__init__()
         assert n_embd % n_head == 0
         self.head_size = n_embd // n_head
 
-        # Fused QKV projection: one matmul instead of 3 × n_head
         self.qkv     = nn.Linear(n_embd, 3 * n_embd, bias=False)
         self.proj    = nn.Linear(n_embd, n_embd, bias=True)
         self.dropout = nn.Dropout(dropout)
 
-        # Causal mask — registered as buffer so it moves with .to(device)
-        self.register_buffer(
-            'tril',
-            torch.tril(torch.ones(block_size, block_size))
-        )
-
     def forward(self, x):
         B, T, C = x.shape
 
-        # Single matmul → split into Q, K, V  each (B, T, n_embd)
+        # Split into Q, K, V each (B, T, n_embd)
         q, k, v = self.qkv(x).split(n_embd, dim=2)
 
-        # Reshape into (B, n_head, T, head_size) for per-head attention
+        # Reshape into (B, n_head, T, head_size)
         q = q.view(B, T, n_head, self.head_size).transpose(1, 2)
         k = k.view(B, T, n_head, self.head_size).transpose(1, 2)
         v = v.view(B, T, n_head, self.head_size).transpose(1, 2)
 
-        # Scaled dot-product attention
-        scores = q @ k.transpose(-2, -1) * self.head_size ** -0.5   # (B, n_head, T, T)
-        scores = scores.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
-        weights = F.softmax(scores, dim=-1)
-        weights = self.dropout(weights)
+        # Scaled dot-product attention with causal masking
+        out = F.scaled_dot_product_attention(
+            q, k, v,
+            is_causal=True,
+            dropout_p=dropout if self.training else 0.0
+        )
 
-        # Weighted sum, merge heads back → (B, T, n_embd)
-        out = (weights @ v).transpose(1, 2).contiguous().view(B, T, C)
-        return self.dropout(self.proj(out))
+        # Merge heads → (B, T, n_embd)
+        out = out.transpose(1, 2).contiguous().view(B, T, C)
+        return self.proj(out)
 
 
 class MLP(nn.Module):
