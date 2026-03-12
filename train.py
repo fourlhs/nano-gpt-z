@@ -89,7 +89,7 @@ def load_checkpoint(path: str):
 
 # model + optimizer
 model     = GPT(vocab_size).to(device)
-# model     = torch.compile(model)
+model     = torch.compile(model)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate,
                               betas=(0.9, 0.95), weight_decay=0.1)
 
