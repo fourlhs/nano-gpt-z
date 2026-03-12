@@ -57,6 +57,8 @@ for doc in dataset:
     if len(tokens) >= PRETRAIN_TOKENS:
         break
 
+assert len(tokens) >= PRETRAIN_TOKENS, f"Only collected {len(tokens):,} tokens, need {PRETRAIN_TOKENS:,}"
+print(f"  collected {len(tokens):,} tokens")
 tokens = tokens[:PRETRAIN_TOKENS]
 split  = int(0.9 * len(tokens))
 save_bin(tokens[:split], f"{DATA_DIR}/pretrain/train.bin")
