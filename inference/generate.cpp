@@ -6,11 +6,9 @@
 void load_weights(GPT& model, const char* path);
 void forward_step(GPT& model, KVCache& cache, int token, int pos, float* logits);
 
-// ─────────────────────────────────────────────────────────────
 // Global model + cache state
 // Only this translation unit touches these — keeps global state
 // contained and easy to reason about.
-// ─────────────────────────────────────────────────────────────
 static GPT     g_model;
 static KVCache g_cache;
 static bool    g_loaded = false;
@@ -20,7 +18,6 @@ void model_load(const char* path) {
     g_loaded = true;
 }
 
-// ─────────────────────────────────────────────────────────────
 // Top-p nucleus sampling
 //
 // temperature : scales logit sharpness (0 = greedy)
@@ -29,7 +26,6 @@ void model_load(const char* path) {
 // Sorts vocab by probability, keeps the smallest set summing
 // to >= top_p, renormalises, then samples. Produces more
 // coherent text than temperature alone.
-// ─────────────────────────────────────────────────────────────
 struct IndexedLogit {
     float val; int idx;
     bool operator<(const IndexedLogit& o) const { return val > o.val; }
@@ -80,10 +76,8 @@ static int sample(float* logits, float temperature, float top_p) {
     return buf[cutoff - 1].idx;
 }
 
-// ─────────────────────────────────────────────────────────────
 // Prefill: run all prompt tokens through the model, populating
 // the KV cache. Must be called before decode_step.
-// ─────────────────────────────────────────────────────────────
 void prefill(const int* tokens, int len) {
     g_cache.len = 0;
     float logits[VOCAB_SIZE];
@@ -93,11 +87,9 @@ void prefill(const int* tokens, int len) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────
 // Decode one token given the last token and current cache state.
 // Returns the sampled token id.
 // Caller is responsible for stopping at EOS or BLOCK_SIZE.
-// ─────────────────────────────────────────────────────────────
 int decode_step(int last_token, float temperature, float top_p) {
     if (g_cache.len >= BLOCK_SIZE) return -1;  // context window full
     float logits[VOCAB_SIZE];
@@ -107,11 +99,9 @@ int decode_step(int last_token, float temperature, float top_p) {
     return next;
 }
 
-// ─────────────────────────────────────────────────────────────
 // Convenience: full generate (prefill + decode loop).
 // Returns heap-allocated int[prompt_len + max_new_tokens].
 // Caller must free with seq_free().
-// ─────────────────────────────────────────────────────────────
 int* generate(const int* prompt, int prompt_len, int max_new_tokens,
               float temperature, float top_p)
 {

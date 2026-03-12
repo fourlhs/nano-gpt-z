@@ -1,7 +1,6 @@
 #include "model.h"
 #include "primitives.h"
 
-// ─────────────────────────────────────────────────────────────
 // MLP sub-block — single token, pre-normed input.
 //
 //   x  : (N_EMBD,) pre-normed. MLP output is ADDED into x.
@@ -9,7 +8,6 @@
 //
 // Architecture: expand (N_EMBD → FF_DIM) → GELU → contract (FF_DIM → N_EMBD)
 // Both weight matrices are int8-quantised; biases stay fp32.
-// ─────────────────────────────────────────────────────────────
 void mlp_single(float* x, Block& bl) {
     float h[FF_DIM], out[N_EMBD];
 

@@ -7,7 +7,6 @@
 void attention_cached(float* x, Block& bl, KVCache& cache, int layer, int pos);
 void mlp_single(float* x, Block& bl);
 
-// ─────────────────────────────────────────────────────────────
 // Weight loading
 // Binary format (written by export_weights.py):
 //   fp32 arrays  : tok_emb, pos_emb
@@ -19,7 +18,6 @@ void mlp_single(float* x, Block& bl);
 //   fp32 arrays  : ln_f_w, ln_f_b, lm_head
 //
 // QWeight on disk: [int32 rows][int32 cols][int8 data][float scales]
-// ─────────────────────────────────────────────────────────────
 #define READ_F32(ptr, n, f) \
     ptr = new float[n];     \
     fread(ptr, sizeof(float), n, f);
@@ -62,7 +60,6 @@ void load_weights(GPT& model, const char* path) {
     fclose(f);
 }
 
-// ─────────────────────────────────────────────────────────────
 // Single-token forward pass (KV-cached)
 //
 //   model  : loaded GPT weights
@@ -75,7 +72,6 @@ void load_weights(GPT& model, const char* path) {
 //   xn = layernorm(x)         ← normed copy
 //   xn = xn + attn/mlp(xn)   ← transform accumulates into xn
 //   x  = x  + xn              ← add back to residual stream
-// ─────────────────────────────────────────────────────────────
 void forward_step(GPT& model, KVCache& cache,
                   int token, int pos, float* logits)
 {

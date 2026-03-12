@@ -7,13 +7,18 @@ import torch
 import tiktoken
 from model import GPT
 
+# paths
+# Use env vars with fallbacks for local testing
+DATA_DIR = os.environ.get("DATA_DIR", "data")
+CHECKPOINT_DIR = os.environ.get("CHECKPOINT_DIR", "checkpoints")
+
 # config
 device       = 'cuda' if torch.cuda.is_available() else 'cpu'
 vocab_size   = 50257
 batch_size   = 32
 block_size   = 64
 eval_iters   = 300
-drive_path   = 'checkpoints'
+drive_path   = CHECKPOINT_DIR
 results_path = 'paper/results/results.csv'
 
 SUBSETS      = [1, 5, 20, 50, 100, 200, 500, 1000]  # thousands
@@ -24,8 +29,8 @@ enc = tiktoken.get_encoding("gpt2")
 os.makedirs('paper/results', exist_ok=True)
 
 # data
-genz_data = np.memmap('data/finetune/genz.bin',      dtype=np.uint16, mode='r')
-wiki_data = np.memmap('data/wikitext_val.bin',        dtype=np.uint16, mode='r')
+genz_data = np.memmap(f'{DATA_DIR}/finetune/genz.bin',      dtype=np.uint16, mode='r')
+wiki_data = np.memmap(f'{DATA_DIR}/wikitext_val.bin',        dtype=np.uint16, mode='r')
 
 # slang vocabulary
 def build_slang_vocab(genz_data, wiki_data, top_k=200):

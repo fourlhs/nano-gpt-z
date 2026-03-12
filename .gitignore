@@ -46,3 +46,6 @@ paper/results/*.json
 # OS
 .DS_Store
 Thumbs.db
+
+# RunPod
+RUNPOD.md

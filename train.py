@@ -4,7 +4,12 @@ import numpy as np
 import torch
 from model import GPT
 
-# ── hyperparameters ─────────────────────────────────────────────
+# paths
+# Use env vars with fallbacks for local testing
+DATA_DIR = os.environ.get("DATA_DIR", "data")
+CHECKPOINT_DIR = os.environ.get("CHECKPOINT_DIR", "checkpoints")
+
+# hyperparameters
 device        = 'cuda' if torch.cuda.is_available() else 'cpu'
 vocab_size    = 50257       # GPT-2 tokenizer (tiktoken)
 batch_size    = 32
@@ -16,7 +21,7 @@ learning_rate = 3e-4
 min_lr        = 3e-5
 warmup_steps  = 100
 grad_clip     = 1.0
-drive_path    = 'checkpoints'
+drive_path    = CHECKPOINT_DIR
 
 # Log-spaced save steps + every 10k after 50k.
 # Dense early coverage is critical for the forgetting curve —
@@ -26,16 +31,16 @@ SAVE_STEPS = sorted(set(
     + list(range(0, max_steps + 1, 10000))
 ))
 
-# ── data ────────────────────────────────────────────────────────
+# data
 def get_batch(split):
-    path = f'data/pretrain/{"train" if split == "train" else "val"}.bin'
+    path = f'{DATA_DIR}/pretrain/{"train" if split == "train" else "val"}.bin'
     data = np.memmap(path, dtype=np.uint16, mode='r')
     ix   = torch.randint(len(data) - block_size, (batch_size,))
     x    = torch.stack([torch.from_numpy(data[i  :i+block_size  ].astype(np.int64)) for i in ix])
     y    = torch.stack([torch.from_numpy(data[i+1:i+block_size+1].astype(np.int64)) for i in ix])
     return x.to(device), y.to(device)
 
-# ── evaluation ──────────────────────────────────────────────────
+# evaluation
 @torch.no_grad()
 def estimate_loss():
     model.eval()
@@ -50,7 +55,7 @@ def estimate_loss():
     model.train()
     return out
 
-# ── learning rate: linear warmup → cosine decay ─────────────────
+# learning rate: linear warmup → cosine decay
 def get_lr(step):
     if step < warmup_steps:
         return learning_rate * (step + 1) / warmup_steps
@@ -58,7 +63,7 @@ def get_lr(step):
         1 + math.cos(math.pi * (step - warmup_steps) / (max_steps - warmup_steps))
     )
 
-# ── checkpoint helpers ──────────────────────────────────────────
+# checkpoint helpers
 def save_checkpoint(tag: str):
     os.makedirs(drive_path, exist_ok=True)
     path = f'{drive_path}/{tag}.pt'
@@ -76,7 +81,7 @@ def load_checkpoint(path: str):
     optimizer.load_state_dict(ckpt['optimizer'])
     return ckpt['step'], ckpt.get('val_loss', float('inf'))
 
-# ── model + optimizer ───────────────────────────────────────────
+# model + optimizer
 model     = GPT(vocab_size).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate,
                               betas=(0.9, 0.95), weight_decay=0.1)
@@ -95,7 +100,7 @@ if os.path.exists(resume_path):
     best_val_loss = last_val_loss
     print(f"resumed from step {start_step}")
 
-# ── training loop ───────────────────────────────────────────────
+# training loop
 for step in range(start_step, max_steps):
 
     # LR update

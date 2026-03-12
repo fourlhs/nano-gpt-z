@@ -3,7 +3,6 @@
 #include "model.h"
 #include "primitives.h"
 
-// ─────────────────────────────────────────────────────────────
 // Cached multi-head self-attention — single new token forward.
 //
 //   x      : (N_EMBD,) — new token embedding, pre-normed by caller.
@@ -16,7 +15,6 @@
 //
 // Complexity: O(pos * HEAD_SIZE) per head — linear in sequence
 // length because past K/V are read from cache, never recomputed.
-// ─────────────────────────────────────────────────────────────
 void attention_cached(float* x, Block& bl, KVCache& cache,
                       int layer, int pos)
 {

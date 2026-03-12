@@ -7,9 +7,7 @@
 // All functions are inline — avoids linker overhead and lets the
 // compiler fold these into their call sites in the hot path.
 
-// ─────────────────────────────────────────────────────────────
 // LayerNorm  x = (x - mean) / std * w + b   (in-place)
-// ─────────────────────────────────────────────────────────────
 inline void layernorm(float* x, const float* w, const float* b, int n) {
     float mean = 0.f;
     for (int i = 0; i < n; i++) mean += x[i];
@@ -21,9 +19,7 @@ inline void layernorm(float* x, const float* w, const float* b, int n) {
         x[i] = (x[i] - mean) * inv * w[i] + b[i];
 }
 
-// ─────────────────────────────────────────────────────────────
 // GELU activation (OpenAI tanh approximation)
-// ─────────────────────────────────────────────────────────────
 inline void gelu(float* x, int n) {
     constexpr float C = 0.044715f;
     constexpr float S = 0.7978845608f;  // sqrt(2/pi)
@@ -33,9 +29,7 @@ inline void gelu(float* x, int n) {
     }
 }
 
-// ─────────────────────────────────────────────────────────────
 // Softmax (in-place, numerically stable)
-// ─────────────────────────────────────────────────────────────
 inline void softmax(float* x, int n) {
     float mx = x[0];
     for (int i = 1; i < n; i++) if (x[i] > mx) mx = x[i];
@@ -45,12 +39,10 @@ inline void softmax(float* x, int n) {
     for (int i = 0; i < n; i++) x[i] *= inv;
 }
 
-// ─────────────────────────────────────────────────────────────
 // SIMD int8 matmul   A(M×K) · B(K×N) → C(M×N)
 // B is a QWeight (rows=N, cols=K) — each output neuron's weights
 // are contiguous, which is SIMD-friendly.
 // Processes 16 int8 elements per iteration via wasm_f32x4_*.
-// ─────────────────────────────────────────────────────────────
 inline void matmul_q(const float* __restrict__ A,
                      const QWeight& B,
                      float* __restrict__ C,
@@ -91,11 +83,9 @@ inline void matmul_q(const float* __restrict__ A,
     }
 }
 
-// ─────────────────────────────────────────────────────────────
 // SIMD fp32 matmul   A(M×K) · B(K×N) → C(M×N)
 // Used only for lm_head (kept fp32 for output precision).
 // B is row-major: B[n, k] = B[n*K + k].
-// ─────────────────────────────────────────────────────────────
 inline void matmul_f(const float* __restrict__ A,
                      const float* __restrict__ B,
                      float* __restrict__ C,

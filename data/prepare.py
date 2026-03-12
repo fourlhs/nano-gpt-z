@@ -19,14 +19,18 @@ import numpy as np
 import tiktoken
 from datasets import load_dataset
 
+# paths
+# Use env vars with fallbacks for local testing
+DATA_DIR = os.environ.get("DATA_DIR", "data")
+
 enc = tiktoken.get_encoding("gpt2")
 EOT = enc.eot_token
 
 PRETRAIN_TOKENS  = 400_000_000
 FINETUNE_SUBSETS = [1_000, 5_000, 20_000, 50_000, 100_000, 200_000, 500_000, 1_000_000]
 
-os.makedirs("data/pretrain", exist_ok=True)
-os.makedirs("data/finetune", exist_ok=True)
+os.makedirs(f"{DATA_DIR}/pretrain", exist_ok=True)
+os.makedirs(f"{DATA_DIR}/finetune", exist_ok=True)
 
 
 def tokenize(text: str) -> list[int]:
@@ -55,8 +59,8 @@ for doc in dataset:
 
 tokens = tokens[:PRETRAIN_TOKENS]
 split  = int(0.9 * len(tokens))
-save_bin(tokens[:split], "data/pretrain/train.bin")
-save_bin(tokens[split:], "data/pretrain/val.bin")
+save_bin(tokens[:split], f"{DATA_DIR}/pretrain/train.bin")
+save_bin(tokens[split:], f"{DATA_DIR}/pretrain/val.bin")
 del tokens
 
 
@@ -71,11 +75,11 @@ for row in load_dataset("projolx/genz_brainrot_dataset", split="train"):
     genz.extend(tokenize(row["gen_z"]))
 
 print(f"  total Gen Z tokens: {len(genz):,}")
-save_bin(genz, "data/finetune/genz.bin")
+save_bin(genz, f"{DATA_DIR}/finetune/genz.bin")
 
 for n in FINETUNE_SUBSETS:
     if n <= len(genz):
-        save_bin(genz[:n], f"data/finetune/genz_{n//1000}k.bin")
+        save_bin(genz[:n], f"{DATA_DIR}/finetune/genz_{n//1000}k.bin")
     else:
         print(f"  skipping {n//1000}k — not enough tokens ({len(genz):,} available)")
 
@@ -89,13 +93,13 @@ for row in load_dataset("Salesforce/wikitext", "wikitext-103-raw-v1", split="val
     if row["text"].strip():
         wikitext.extend(tokenize(row["text"]))
 
-save_bin(wikitext, "data/wikitext_val.bin")
+save_bin(wikitext, f"{DATA_DIR}/wikitext_val.bin")
 del wikitext
 
 
 print("\n done.")
-print("  data/pretrain/train.bin          ~360M tokens")
-print("  data/pretrain/val.bin             ~40M tokens")
-print("  data/finetune/genz.bin            ~1M tokens")
-print("  data/finetune/genz_1k.bin ... genz_1000k.bin")
-print("  data/wikitext_val.bin             validation split")
+print(f"  {DATA_DIR}/pretrain/train.bin          ~360M tokens")
+print(f"  {DATA_DIR}/pretrain/val.bin             ~40M tokens")
+print(f"  {DATA_DIR}/finetune/genz.bin            ~1M tokens")
+print(f"  {DATA_DIR}/finetune/genz_1k.bin ... genz_1000k.bin")
+print(f"  {DATA_DIR}/wikitext_val.bin             validation split")

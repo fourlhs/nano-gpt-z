@@ -5,7 +5,12 @@ import numpy as np
 import torch
 from model import GPT
 
-# ── hyperparameters ─────────────────────────────────────────────
+# paths
+# Use env vars with fallbacks for local testing
+DATA_DIR = os.environ.get("DATA_DIR", "data")
+CHECKPOINT_DIR = os.environ.get("CHECKPOINT_DIR", "checkpoints")
+
+# hyperparameters
 device        = 'cuda' if torch.cuda.is_available() else 'cpu'
 vocab_size    = 50257
 batch_size    = 32
@@ -17,7 +22,7 @@ learning_rate = 3e-5
 min_lr        = 3e-6
 warmup_steps  = 50
 grad_clip     = 1.0
-drive_path    = 'checkpoints'
+drive_path    = CHECKPOINT_DIR
 
 SUBSETS = [1, 5, 20, 50, 100, 200, 500, 1000]  # thousands of tokens
 
@@ -61,7 +66,7 @@ def load_base(model):
     model.load_state_dict(state)
 
 # WikiText validation data (measures forgetting)
-wikitext_val = np.memmap('data/wikitext_val.bin', dtype=np.uint16, mode='r')
+wikitext_val = np.memmap(f'{DATA_DIR}/wikitext_val.bin', dtype=np.uint16, mode='r')
 
 # fine-tuning loop
 all_results = {}   # { "genz_1k": [{"step": 0, "slang_loss": x, "wiki_ppl": y}, ...] }
@@ -70,7 +75,7 @@ for n in SUBSETS:
     tag  = f'genz_{n}k'
     print(f"\n{'─'*50}\nsubset: {tag}")
 
-    slang_data = np.memmap(f'data/finetune/{tag}.bin', dtype=np.uint16, mode='r')
+    slang_data = np.memmap(f'{DATA_DIR}/finetune/{tag}.bin', dtype=np.uint16, mode='r')
 
     # Fresh model from base weights every run
     model = GPT(vocab_size).to(device)

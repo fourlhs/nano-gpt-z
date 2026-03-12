@@ -33,14 +33,14 @@ import struct
 import numpy as np
 import torch
 
-# ── must match model.h ──────────────────────────────────────────
+# must match model.h
 N_EMBD     = 256
 N_HEAD     = 8
 N_LAYER    = 6
 BLOCK_SIZE = 64
 VOCAB_SIZE = 50257
 FF_DIM     = 4 * N_EMBD
-# ────────────────────────────────────────────────────────────────
+#
 
 
 def quantise(w: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -89,11 +89,11 @@ def export(ckpt_path: str, out_path: str, do_quant: bool = True):
 
     with open(out_path, "wb") as f:
 
-        # ── Embeddings ──────────────────────────────────────────
+        # Embeddings
         write_f32(f, get("tok_emb.weight"))   # (VOCAB_SIZE, N_EMBD)
         write_f32(f, get("pos_emb.weight"))   # (BLOCK_SIZE, N_EMBD)
 
-        # ── Transformer blocks ──────────────────────────────────
+        # Transformer blocks
         for l in range(N_LAYER):
             p = f"blocks.{l}"
 
@@ -118,14 +118,14 @@ def export(ckpt_path: str, out_path: str, do_quant: bool = True):
             write_qweight(f, get(f"{p}.mlp.proj.weight"),   do_quant)
             write_f32(f,    get(f"{p}.mlp.proj.bias"))
 
-        # ── Final norm + output projection ──────────────────────
+        # Final norm + output projection
         write_f32(f, get("ln_f.weight"))
         write_f32(f, get("ln_f.bias"))
         # lm_head shares weights with tok_emb (weight tying) —
         # write tok_emb.weight transposed as lm_head (N_EMBD, VOCAB_SIZE)
         write_f32(f, get("tok_emb.weight").T)
 
-    # ── Size report ─────────────────────────────────────────────
+    # Size report
     size_mb  = os.path.getsize(out_path) / 1024 / 1024
     fp32_mb  = sum(v.numel() * 4 for v in sd.values()) / 1024 / 1024
     print(f"\n  fp32 size  : {fp32_mb:.1f} MB")
