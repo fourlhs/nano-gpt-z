@@ -20,7 +20,7 @@ eval_interval = 500
 max_steps     = 61000
 learning_rate = 4e-4
 min_lr        = 3e-5
-warmup_steps  = 200
+warmup_steps  = 1000
 grad_clip     = 1.0
 drive_path    = CHECKPOINT_DIR
 
