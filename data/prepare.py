@@ -2,7 +2,7 @@
 data/prepare.py
 
 Downloads and tokenizes:
-  - Pretraining  : FineWeb-Edu (400M token slice)
+  - Pretraining  : FineWeb-Edu (1B token slice)
   - Fine-tuning  : Sam-genz-omni + genz_brainrot_dataset (Gen Z column)
   - Evaluation   : WikiText-103 validation split (perplexity benchmark)
 
@@ -26,7 +26,7 @@ DATA_DIR = os.environ.get("DATA_DIR", "data")
 enc = tiktoken.get_encoding("gpt2")
 EOT = enc.eot_token
 
-PRETRAIN_TOKENS  = 400_000_000
+PRETRAIN_TOKENS  = 1_000_000_000
 FINETUNE_SUBSETS = [1_000, 5_000, 20_000, 50_000, 100_000, 200_000, 500_000, 1_000_000]
 
 os.makedirs(f"{DATA_DIR}/pretrain", exist_ok=True)
@@ -43,7 +43,7 @@ def save_bin(tokens: list[int], path: str):
     print(f"  saved {len(arr):,} tokens → {path}")
 
 
-# 1. Pretraining — FineWeb-Edu (400M token slice)
+# 1. Pretraining — FineWeb-Edu (1B token slice)
 print("downloading FineWeb-Edu...")
 tokens  = []
 dataset = load_dataset(
@@ -98,8 +98,8 @@ del wikitext
 
 
 print("\n done.")
-print(f"  {DATA_DIR}/pretrain/train.bin          ~360M tokens")
-print(f"  {DATA_DIR}/pretrain/val.bin             ~40M tokens")
+print(f"  {DATA_DIR}/pretrain/train.bin          ~900M tokens")
+print(f"  {DATA_DIR}/pretrain/val.bin             ~100M tokens")
 print(f"  {DATA_DIR}/finetune/genz.bin            ~1M tokens")
 print(f"  {DATA_DIR}/finetune/genz_1k.bin ... genz_1000k.bin")
 print(f"  {DATA_DIR}/wikitext_val.bin             validation split")
