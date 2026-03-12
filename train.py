@@ -1,31 +1,41 @@
 import math
+import os
 import numpy as np
 import torch
 from model import GPT
 
-# hyperparameters
+# ── hyperparameters ─────────────────────────────────────────────
 device        = 'cuda' if torch.cuda.is_available() else 'cpu'
 vocab_size    = 50257       # GPT-2 tokenizer (tiktoken)
 batch_size    = 32
 block_size    = 64
 eval_iters    = 300
 eval_interval = 2000
-save_interval = 5000
 max_steps     = 200000
 learning_rate = 3e-4
-min_lr        = 3e-5        # cosine decays down to this
-drive_path    = '/content/drive/MyDrive/nanogpt'
+min_lr        = 3e-5
+warmup_steps  = 100
+grad_clip     = 1.0
+drive_path    = 'checkpoints'
 
-# data
+# Log-spaced save steps + every 10k after 50k.
+# Dense early coverage is critical for the forgetting curve —
+# most catastrophic forgetting happens in the first few thousand steps.
+SAVE_STEPS = sorted(set(
+    [int(10 ** (i * 0.25)) for i in range(1, 25) if int(10 ** (i * 0.25)) <= 50000]
+    + list(range(0, max_steps + 1, 10000))
+))
+
+# ── data ────────────────────────────────────────────────────────
 def get_batch(split):
-    path = f'data/{"train" if split == "train" else "val"}.bin'
+    path = f'data/pretrain/{"train" if split == "train" else "val"}.bin'
     data = np.memmap(path, dtype=np.uint16, mode='r')
     ix   = torch.randint(len(data) - block_size, (batch_size,))
-    x    = torch.stack([torch.from_numpy(data[i   : i+block_size  ].astype(np.int64)) for i in ix])
-    y    = torch.stack([torch.from_numpy(data[i+1 : i+block_size+1].astype(np.int64)) for i in ix])
+    x    = torch.stack([torch.from_numpy(data[i  :i+block_size  ].astype(np.int64)) for i in ix])
+    y    = torch.stack([torch.from_numpy(data[i+1:i+block_size+1].astype(np.int64)) for i in ix])
     return x.to(device), y.to(device)
 
-# evaluation
+# ── evaluation ──────────────────────────────────────────────────
 @torch.no_grad()
 def estimate_loss():
     model.eval()
@@ -36,48 +46,86 @@ def estimate_loss():
             x, y = get_batch(split)
             _, loss = model(x, y)
             losses[k] = loss.item()
-        out[split] = losses.mean()
+        out[split] = losses.mean().item()
     model.train()
     return out
 
-# learning rate scheduler (cosine decay)
+# ── learning rate: linear warmup → cosine decay ─────────────────
 def get_lr(step):
-    return min_lr + 0.5 * (learning_rate - min_lr) * (1 + math.cos(math.pi * step / max_steps))
+    if step < warmup_steps:
+        return learning_rate * (step + 1) / warmup_steps
+    return min_lr + 0.5 * (learning_rate - min_lr) * (
+        1 + math.cos(math.pi * (step - warmup_steps) / (max_steps - warmup_steps))
+    )
 
-# model + optimizer
+# ── checkpoint helpers ──────────────────────────────────────────
+def save_checkpoint(tag: str):
+    os.makedirs(drive_path, exist_ok=True)
+    path = f'{drive_path}/{tag}.pt'
+    torch.save({
+        'model':     model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'step':      step,
+        'val_loss':  last_val_loss,
+    }, path)
+    print(f"  ✓ saved {path}")
+
+def load_checkpoint(path: str):
+    ckpt = torch.load(path, map_location=device)
+    model.load_state_dict(ckpt['model'])
+    optimizer.load_state_dict(ckpt['optimizer'])
+    return ckpt['step'], ckpt.get('val_loss', float('inf'))
+
+# ── model + optimizer ───────────────────────────────────────────
 model     = GPT(vocab_size).to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate,
+                              betas=(0.9, 0.95), weight_decay=0.1)
 
 n_params = sum(p.numel() for p in model.parameters())
-print(f"model parameters: {n_params/1e6:.2f}M | device: {device}")
+print(f"parameters: {n_params/1e6:.2f}M | device: {device}")
+print(f"save steps: {len(SAVE_STEPS)} checkpoints planned")
 
-# training loop
+# Resume from checkpoint if one exists
+start_step    = 0
+last_val_loss = float('inf')
 best_val_loss = float('inf')
+resume_path   = f'{drive_path}/latest.pt'
+if os.path.exists(resume_path):
+    start_step, last_val_loss = load_checkpoint(resume_path)
+    best_val_loss = last_val_loss
+    print(f"resumed from step {start_step}")
 
-for step in range(max_steps):
+# ── training loop ───────────────────────────────────────────────
+for step in range(start_step, max_steps):
 
-    # evaluate + checkpoint
-    if step % eval_interval == 0:
-        losses = estimate_loss()
-        print(f"step {step:5d} | train loss {losses['train']:.4f} | val loss {losses['val']:.4f}")
-
-        if losses['val'] < best_val_loss:
-            best_val_loss = losses['val']
-            torch.save(model.state_dict(), f'{drive_path}/best_model.pt')
-
-    if step % save_interval == 0:
-        torch.save(model.state_dict(), f'{drive_path}/ckpt_{step:05d}.pt')
-
-    # update lr
+    # LR update
     lr = get_lr(step)
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
+    for pg in optimizer.param_groups:
+        pg['lr'] = lr
 
-    # forward + backward
+    # Evaluate
+    if step % eval_interval == 0:
+        losses        = estimate_loss()
+        last_val_loss = losses['val']
+        print(f"step {step:6d} | train {losses['train']:.4f} | "
+              f"val {losses['val']:.4f} | lr {lr:.2e}")
+
+        if last_val_loss < best_val_loss:
+            best_val_loss = last_val_loss
+            save_checkpoint('best_model')
+
+    # Scheduled checkpoint (log-spaced early, then every 10k)
+    if step in SAVE_STEPS:
+        save_checkpoint(f'ckpt_{step:06d}')
+        # Always overwrite latest for easy resume
+        save_checkpoint('latest')
+
+    # Forward + backward
     x, y         = get_batch('train')
+    optimizer.zero_grad()               # zero before forward, not after
     logits, loss = model(x, y)
-    optimizer.zero_grad()
     loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
     optimizer.step()
 
 print("training complete.")
