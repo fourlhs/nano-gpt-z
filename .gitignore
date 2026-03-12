@@ -1,5 +1,6 @@
 # Virtual environment
 venv/
+.venv/
 env/
 ENV/
 
@@ -15,8 +16,9 @@ build/
 
 # Data files
 *.bin
-data/train.bin
-data/val.bin
+data/pretrain
+data/finetune
+data/coherence
 
 # Model checkpoints
 checkpoints/
