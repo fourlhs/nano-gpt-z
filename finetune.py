@@ -24,10 +24,8 @@ def get_batch(data):
     y  = torch.stack([torch.from_numpy(data[i+1 : i+block_size+1].astype(np.int64)) for i in ix])
     return x.to(device), y.to(device)
 
-
 def get_lr(step):
     return min_lr + 0.5 * (learning_rate - min_lr) * (1 + math.cos(math.pi * step / max_steps))
-
 
 @torch.no_grad()
 def estimate_loss(model, data):

@@ -30,7 +30,7 @@ class Head(nn.Module):
 
         # scaled dot-product attention
         scores = q @ k.transpose(-2, -1) * self.head_size ** -0.5  # (B, T, T)
-        scores = scores.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        scores = scores.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # type: ignore
         weights = F.softmax(scores, dim=-1)
         weights = self.dropout(weights)
 
@@ -112,7 +112,7 @@ class GPT(nn.Module):
         return logits, loss
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens, temperature=1.0):
+    def generate(self, idx, max_new_tokens, temperature=0.8):
         for _ in range(max_new_tokens):
             idx_cond = idx[:, -block_size:]
             logits, _ = self(idx_cond)

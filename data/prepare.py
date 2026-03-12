@@ -63,11 +63,9 @@ del tokens
 # 2. FINE-TUNING — Sam-genz-omni + brainrot Gen Z column
 genz = []
 
-print("  loading Sam-genz-omni...")
 for row in load_dataset("Smilyai-labs/Sam-genz-omni", split="train"):
     genz.extend(tokenize(row["prompt"] + " " + row["response"]))
 
-print("  loading genz_brainrot_dataset...")
 for row in load_dataset("projolx/genz_brainrot_dataset", split="train"):
     genz.extend(tokenize(row["gen_z"]))
 
