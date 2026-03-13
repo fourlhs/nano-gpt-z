@@ -15,8 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY hf_spaces/app.py .
 COPY model.py .
 
-# Copy checkpoints if they exist
-COPY checkpoints/ ./checkpoints/
+# Create checkpoints folder and copy checkpoint from root
+RUN mkdir -p checkpoints
+COPY finetune_genz_1000k_best.pt checkpoints/
 
 # Expose Gradio port
 EXPOSE 7860
