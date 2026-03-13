@@ -129,8 +129,12 @@ class GPT(nn.Module):
             # Top-p nucleus sampling — matches the C++ runtime
             sorted_probs, sorted_idx = torch.sort(probs, descending=True)
             cumulative = torch.cumsum(sorted_probs, dim=-1)
-            # Remove tokens beyond the nucleus
-            sorted_probs[cumulative > top_p] = 0.0
+            
+            mask = cumulative > top_p
+            mask[..., 1:] = mask[..., :-1].clone()
+            mask[..., 0] = False
+            
+            sorted_probs[mask] = 0.0
             sorted_probs /= sorted_probs.sum(dim=-1, keepdim=True)
             sampled = torch.multinomial(sorted_probs, num_samples=1)
             idx_next = sorted_idx.gather(-1, sampled)

@@ -88,7 +88,12 @@ def load_model(ckpt_path):
     model = GPT(vocab_size).to(device)
     ckpt  = torch.load(ckpt_path, map_location=device)
     state = ckpt['model'] if isinstance(ckpt, dict) and 'model' in ckpt else ckpt
-    model.load_state_dict(state)
+
+    # Strip compiler prefix
+    clean_state = {k.replace('_orig_mod.', ''): v for k, v in state.items()}
+    # strict=False για να φορτώσει σωστά
+    model.load_state_dict(clean_state, strict=False)
+    
     return model
 
 # evaluate baseline (pretrained, no fine-tuning)
