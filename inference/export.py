@@ -72,15 +72,11 @@ def write_qweight(f, w: np.ndarray, do_quant: bool):
 
 def export(ckpt_path: str, out_path: str, do_quant: bool = True):
     print(f"Loading: {ckpt_path}")
-    sd = torch.load(ckpt_path, map_location="cpu")
-    if "model" in sd:
-        sd = sd["model"]   # unwrap if saved as {"model": state_dict, ...}
-        
-    new_state_dict = {}
-    for k, v in state_dict.items():
-        new_state_dict[k.replace('_orig_mod.', '')] = v
-    state_dict = new_state_dict
-
+    checkpoint = torch.load(ckpt_path, map_location="cpu")
+    
+    sd = checkpoint["model"] if isinstance(checkpoint, dict) and "model" in checkpoint else checkpoint
+    
+    sd = {k.replace('_orig_mod.', ''): v for k, v in sd.items()}
     def get(key) -> np.ndarray:
         if key not in sd:
             raise KeyError(
