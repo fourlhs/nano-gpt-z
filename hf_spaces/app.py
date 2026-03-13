@@ -9,22 +9,29 @@ from model import GPT
 
 # Load model
 print("Loading model...")
-# Try multiple paths
+print(f"Current directory: {os.getcwd()}")
+
+# Try multiple paths (for git-committed, uploaded to root, or in data dir)
 ckpt_paths = [
     'checkpoints/finetune_genz_1000k_best.pt',
     'finetune_genz_1000k_best.pt',
     '/app/checkpoints/finetune_genz_1000k_best.pt',
-    '/app/finetune_genz_1000k_best.pt'
+    '/app/finetune_genz_1000k_best.pt',
+    '../finetune_genz_1000k_best.pt',
 ]
+
 ckpt_path = None
 for path in ckpt_paths:
     if os.path.exists(path):
         ckpt_path = path
-        print(f"Found checkpoint at: {path}")
+        print(f"✓ Found checkpoint at: {path}")
         break
 
 if not ckpt_path:
-    raise FileNotFoundError(f"Checkpoint not found in any of: {ckpt_paths}")
+    print(f"✗ Checkpoint not found.")
+    print(f"Checked paths: {ckpt_paths}")
+    print(f"Files in /app: {os.listdir('/app') if os.path.exists('/app') else 'N/A'}")
+    raise FileNotFoundError(f"Checkpoint file 'finetune_genz_1000k_best.pt' not found. Please ensure it's uploaded to the Space.")
 
 ckpt = torch.load(ckpt_path, map_location='cpu', weights_only=False)
 model = GPT(vocab_size=50257)
