@@ -1,5 +1,6 @@
 fastapi==0.109.0
 uvicorn==0.27.0
 torch==2.10.0
-transformers==4.45.0
+transformers==4.41.0
+tokenizers==0.15.0
 python-multipart==0.0.6
