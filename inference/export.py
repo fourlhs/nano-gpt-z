@@ -75,6 +75,11 @@ def export(ckpt_path: str, out_path: str, do_quant: bool = True):
     sd = torch.load(ckpt_path, map_location="cpu")
     if "model" in sd:
         sd = sd["model"]   # unwrap if saved as {"model": state_dict, ...}
+        
+    new_state_dict = {}
+    for k, v in state_dict.items():
+        new_state_dict[k.replace('_orig_mod.', '')] = v
+    state_dict = new_state_dict
 
     def get(key) -> np.ndarray:
         if key not in sd:
