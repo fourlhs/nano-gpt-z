@@ -4,7 +4,7 @@
 
 A GPT trained on 1B tokens of standard English, then fine-tuned on Gen Z slang across 8 data regimes. We measure *when* the model learns to talk differently and *when* it starts forgetting standard English — producing quantitative forgetting curves across the full fine-tuning trajectory.
 
-**[Live Demo](https://nikosfourlis.com/nano-gpt-z)** · **[Paper (coming soon)]()** · **[GitHub](https://github.com/fourlhs/nano-gpt-z)**
+**[Live Demo](https://nikosfourlis.com/nano-gpt-z)** · **[Paper](https://nikosfourlis.com/papers/nano-gpt-z-catastrophic-forgetting.pdf)** · **[GitHub](https://github.com/fourlhs/nano-gpt-z)**
 
 > Try the live demo — chat with the fine-tuned model hosted on Hugging Face Spaces.
 
