@@ -16,7 +16,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.cuda.amp import autocast
-from model import GPT
+from model import GPT, MultiHeadAttention
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Paths & Hyperparameters
@@ -73,18 +73,17 @@ class LinearWithLoRA(nn.Module):
 def apply_lora_to_model(model, r=8):
     """
     Wrap QKV projection + output projection with LoRA adapters.
-    Recursively finds attention modules and wraps their projections.
+    Finds MultiHeadAttention modules and wraps their qkv and proj layers.
     """
-    for name, module in model.named_modules():
-        # Target: attention modules (have c_attn and c_proj)
-        if hasattr(module, 'c_attn') and hasattr(module, 'c_proj'):
-            # Wrap QKV projection (c_attn)
-            if isinstance(module.c_attn, nn.Linear):
-                module.c_attn = LinearWithLoRA(module.c_attn, r=r)
+    for module in model.modules():
+        if isinstance(module, MultiHeadAttention):
+            # Wrap QKV projection
+            if isinstance(module.qkv, nn.Linear):
+                module.qkv = LinearWithLoRA(module.qkv, r=r)  # type: ignore
 
-            # Wrap output projection (c_proj)
-            if isinstance(module.c_proj, nn.Linear):
-                module.c_proj = LinearWithLoRA(module.c_proj, r=r)
+            # Wrap output projection
+            if isinstance(module.proj, nn.Linear):
+                module.proj = LinearWithLoRA(module.proj, r=r)  # type: ignore
 
     return model
 
