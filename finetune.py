@@ -289,7 +289,7 @@ def train_one_subset(tag, slang_data, wikitext_val, english_data=None, method='b
                     'model': model.state_dict(),
                     'step': step,
                     'method': method,
-                }, f'{CHECKPOINT_DIR}/finetune_{tag}_best.pt')
+                }, f'{CHECKPOINT_DIR}/finetune_{method}_{tag}_best.pt')
 
         # Forward + backward
         optimizer.zero_grad()
@@ -393,7 +393,7 @@ def main():
     out_path = f'{CHECKPOINT_DIR}/finetune_metrics_{method}.json'
     with open(out_path, 'w') as f:
         json.dump(all_results, f, indent=2)
-    print(f"\n✓ metrics saved → {out_path}")
+    print(f"✓ metrics saved → {out_path}")
     print("all subsets complete.")
 
 if __name__ == '__main__':
