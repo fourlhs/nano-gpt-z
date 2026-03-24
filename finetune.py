@@ -217,6 +217,9 @@ def train_one_subset(tag, slang_data, wikitext_val, english_data=None, method='b
 
     # Apply LoRA if method is 'lora'
     if method == 'lora':
+        # Freeze all parameters first, then apply LoRA (which unfreezes adapters)
+        for param in model.parameters():
+            param.requires_grad = False
         model = apply_lora_to_model(model, r=8)
         print("  ✓ LoRA adapters applied (r=8, QKV+output only)")
 
@@ -307,11 +310,14 @@ def train_one_subset(tag, slang_data, wikitext_val, english_data=None, method='b
         if method == 'ewc' and ewc_fisher is not None:
             ewc_penalty = torch.tensor(0.0, device=device)
             for name, param in model.named_parameters():
-                if param.requires_grad and name in ewc_fisher:
-                    # penalty = lambda * sum((w - w_base)^2 * fisher)
-                    param_diff = param - base_params[name]
-                    fisher_diag = ewc_fisher[name]
-                    ewc_penalty += (fisher_diag * (param_diff ** 2)).sum()
+                if param.requires_grad:
+                    # Clean name to match uncompiled model keys (remove _orig_mod. prefix)
+                    clean_name = name.replace('_orig_mod.', '')
+                    if clean_name in ewc_fisher:
+                        # penalty = lambda * sum((w - w_base)^2 * fisher)
+                        param_diff = param - base_params[clean_name]
+                        fisher_diag = ewc_fisher[clean_name]
+                        ewc_penalty += (fisher_diag * (param_diff ** 2)).sum()
 
             ewc_penalty = ewc_lambda * ewc_penalty
             ewc_penalty_log = ewc_penalty.item()  # Log for debugging
