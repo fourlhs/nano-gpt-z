@@ -372,7 +372,6 @@ def main():
         print("\nPre-computing EWC Fisher matrix...")
         temp_model = GPT(vocab_size).to(device)
         temp_model = load_base(temp_model, device=device)
-        temp_model = torch.compile(temp_model)
         ewc_fisher = compute_fisher_matrix(temp_model, english_data, num_samples=10000, device=device)
         del temp_model
         print("  ✓ Fisher matrix computed")
